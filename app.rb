@@ -129,3 +129,7 @@ module ClaudeDialogue
     end
   end
 end
+
+if __FILE__ == $0
+  ClaudeDialogue::App.run!
+end
