@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Dialogue - Two Minds, One Conversation</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container-fluid">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark-custom mb-4">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="/">
+          <span class="brand-icon">🤖</span> Claude Dialogue
+        </a>
+      </div>
+    </nav>
+
+    <div class="row">
+      <div class="col-lg-8 offset-lg-2">
+        <div class="hero-section">
+          <h1 class="display-4 text-center mb-3">Two Minds, One Conversation</h1>
+          <p class="lead text-center text-muted mb-5">
+            Watch two Claude instances engage in thoughtful dialogue
+          </p>
+        </div>
+
+        <!-- Start New Conversation Card -->
+        <div class="card floating-card mb-4">
+          <div class="card-body p-4">
+            <h5 class="card-title mb-4">Start New Conversation</h5>
+            
+            <form id="startConversationForm">
+              <div class="mb-3">
+                <label for="initialPrompt" class="form-label">Initial Prompt</label>
+                <textarea 
+                  class="form-control apple-input" 
+                  id="initialPrompt" 
+                  rows="4" 
+                  placeholder="What should Claude A and Claude 2 discuss?"
+                  required
+                ></textarea>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="claudeAPrompt" class="form-label">Claude A System Prompt (Optional)</label>
+                  <textarea 
+                    class="form-control apple-input" 
+                    id="claudeAPrompt" 
+                    rows="3" 
+                    placeholder="You are Claude A..."
+                  ></textarea>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                  <label for="claude2Prompt" class="form-label">Claude 2 System Prompt (Optional)</label>
+                  <textarea 
+                    class="form-control apple-input" 
+                    id="claude2Prompt" 
+                    rows="3" 
+                    placeholder="You are Claude 2..."
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="stoppingCondition" class="form-label">Stopping Condition</label>
+                <select class="form-select apple-input" id="stoppingCondition">
+                  <option value="max_turns:5">5 turns</option>
+                  <option value="max_turns:10" selected>10 turns</option>
+                  <option value="max_turns:20">20 turns</option>
+                  <option value="max_turns:50">50 turns</option>
+                </select>
+              </div>
+
+              <button type="submit" class="btn btn-primary-custom w-100" id="startBtn">
+                <span class="spinner-border spinner-border-sm d-none" id="startSpinner"></span>
+                Start Conversation
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Recent Conversations -->
+        <div class="card floating-card">
+          <div class="card-body p-4">
+            <h5 class="card-title mb-4">Recent Conversations</h5>
+            <div id="recentConversations">
+              <div class="text-center text-muted">
+                <div class="spinner-border" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered apple-modal">
+      <div class="modal-content">
+        <div class="modal-body text-center p-5">
+          <div class="success-icon mb-3">✓</div>
+          <h5 class="mb-3">Conversation Started!</h5>
+          <p class="text-muted mb-4">Your conversation has been initiated.</p>
+          <a href="#" id="viewConversationLink" class="btn btn-primary-custom">View Conversation</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

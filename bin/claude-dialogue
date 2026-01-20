@@ -1,0 +1,235 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'json'
+require 'net/http'
+require 'uri'
+
+# ANSI Color codes
+module Colors
+  RESET = "\033[0m"
+  
+  # Regular colors
+  BLACK = "\033[0;30m"
+  RED = "\033[0;31m"
+  GREEN = "\033[0;32m"
+  YELLOW = "\033[0;33m"
+  BLUE = "\033[0;34m"
+  PURPLE = "\033[0;35m"
+  CYAN = "\033[0;36m"
+  WHITE = "\033[0;37m"
+  
+  # Bold colors
+  B_BLACK = "\033[1;30m"
+  B_RED = "\033[1;31m"
+  B_GREEN = "\033[1;32m"
+  B_YELLOW = "\033[1;33m"
+  B_BLUE = "\033[1;34m"
+  B_PURPLE = "\033[1;35m"
+  B_CYAN = "\033[1;36m"
+  B_WHITE = "\033[1;97m"
+  
+  # Dim colors
+  D_WHITE = "\033[2;37m"
+  D_CYAN = "\033[2;36m"
+  D_GREEN = "\033[2;32m"
+  
+  # Underline
+  U_BLUE = "\033[4;34m"
+  U_CYAN = "\033[4;36m"
+  
+  # High intensity
+  I_WHITE = "\033[0;97m"
+  I_CYAN = "\033[0;96m"
+  
+  # Bold high intensity
+  BI_WHITE = "\033[1;97m"
+  BI_CYAN = "\033[1;96m"
+  
+  # Backgrounds
+  ON_BLUE = "\033[44m"
+  ON_BLACK = "\033[40m"
+  
+  # Modes
+  BOLD = "\033[1m"
+  DIM = "\033[2m"
+  UNDERLINE = "\033[4m"
+end
+
+# CLI for Claude Dialogue
+class ClaudeDialogueCLI
+  include Colors
+  
+  def initialize
+    @options = {
+      host: 'localhost',
+      port: 4567,
+      stopping_condition: 'max_turns:10'
+    }
+    @parser = create_parser
+    
+    # Trap to reset terminal on exit
+    trap('INT') { cleanup_and_exit }
+    trap('TERM') { cleanup_and_exit }
+  end
+  
+  def run(args)
+    @parser.parse!(args)
+    
+    if @options[:prompt].nil?
+      puts "#{B_RED}✗ Error: Prompt is required#{RESET}"
+      puts @parser
+      exit 1
+    end
+    
+    start_conversation
+  ensure
+    print RESET
+  end
+  
+  private
+  
+  def cleanup_and_exit
+    print RESET
+    exit 0
+  end
+  
+  def create_parser
+    OptionParser.new do |opts|
+      opts.banner = "#{BI_WHITE}#{ON_BLUE}╔════════════════════════════════════╗#{RESET}\n" +
+                    "#{BI_WHITE}#{ON_BLUE}║  🤖  Claude Dialogue CLI  🤖     ║#{RESET}\n" +
+                    "#{BI_WHITE}#{ON_BLUE}╚════════════════════════════════════╝#{RESET}\n\n" +
+                    "#{B_PURPLE}Usage:#{RESET} claude-dialogue [options]\n\n" +
+                    "#{B_PURPLE}Options:#{RESET}"
+      opts.separator ""
+      
+      opts.on('-p', '--prompt PROMPT', "#{B_WHITE}Initial prompt for Claude A #{D_WHITE}(required)#{RESET}") do |p|
+        @options[:prompt] = p
+      end
+      
+      opts.on('-a', '--claude-a PROMPT', "#{B_WHITE}System prompt for Claude A#{RESET}") do |p|
+        @options[:claude_a_prompt] = p
+      end
+      
+      opts.on('-2', '--claude-2 PROMPT', "#{B_WHITE}System prompt for Claude 2#{RESET}") do |p|
+        @options[:claude_2_prompt] = p
+      end
+      
+      opts.on('-s', '--stop CONDITION', "#{B_WHITE}Stopping condition #{D_WHITE}(e.g., max_turns:20)#{RESET}") do |c|
+        @options[:stopping_condition] = c
+      end
+      
+      opts.on('-H', '--host HOST', "#{B_WHITE}Server host #{D_WHITE}(default: localhost)#{RESET}") do |h|
+        @options[:host] = h
+      end
+      
+      opts.on('-P', '--port PORT', Integer, "#{B_WHITE}Server port #{D_WHITE}(default: 4567)#{RESET}") do |p|
+        @options[:port] = p
+      end
+      
+      opts.on('-j', '--json', "#{B_WHITE}Output as JSON#{RESET}") do
+        @options[:json] = true
+      end
+      
+      opts.on('-h', '--help', "#{B_WHITE}Show this help message#{RESET}") do
+        puts opts
+        exit
+      end
+      
+      opts.separator ""
+      opts.separator "#{B_PURPLE}Examples:#{RESET}"
+      opts.separator "  #{B_CYAN}➜#{RESET} #{CYAN}claude-dialogue -p 'Discuss consciousness'#{RESET}"
+      opts.separator "  #{B_CYAN}➜#{RESET} #{CYAN}claude-dialogue -p 'Debate free will' -s max_turns:20#{RESET}"
+      opts.separator "  #{B_CYAN}➜#{RESET} #{CYAN}claude-dialogue -p 'AI safety' -a 'You are cautious' -2 'You are optimistic'#{RESET}"
+      opts.separator ""
+    end
+  end
+  
+  def start_conversation
+    unless @options[:json]
+      puts "\n#{B_BLUE}▶ Starting conversation...#{RESET}"
+      puts "#{D_WHITE}  ├─ Prompt:#{RESET} #{@options[:prompt][0..60]}#{@options[:prompt].length > 60 ? '...' : ''}"
+      puts "#{D_WHITE}  └─ Server:#{RESET} #{B_CYAN}http://#{@options[:host]}:#{@options[:port]}#{RESET}"
+      puts ""
+    end
+    
+    uri = URI("http://#{@options[:host]}:#{@options[:port]}/api/conversations")
+    
+    payload = {
+      prompt: @options[:prompt],
+      stopping_condition: @options[:stopping_condition]
+    }
+    
+    payload[:claude_a_system_prompt] = @options[:claude_a_prompt] if @options[:claude_a_prompt]
+    payload[:claude_2_system_prompt] = @options[:claude_2_prompt] if @options[:claude_2_prompt]
+    
+    http = Net::HTTP.new(uri.host, uri.port)
+    request = Net::HTTP::Post.new(uri.path, 'Content-Type' => 'application/json')
+    request.body = payload.to_json
+    
+    response = http.request(request)
+    
+    if response.is_a?(Net::HTTPSuccess)
+      result = JSON.parse(response.body)
+      
+      if @options[:json]
+        puts JSON.pretty_generate(result)
+      else
+        puts "#{B_GREEN}#{ON_BLACK}╔════════════════════════════════════╗#{RESET}"
+        puts "#{B_GREEN}#{ON_BLACK}║  ✓  Conversation Started!  ✓    ║#{RESET}"
+        puts "#{B_GREEN}#{ON_BLACK}╚════════════════════════════════════╝#{RESET}"
+        puts ""
+        puts "#{B_WHITE}Conversation ID:#{RESET} #{B_CYAN}##{result['conversation_id']}#{RESET}"
+        puts "#{B_WHITE}Status:#{RESET}          #{B_GREEN}#{result['status']}#{RESET}"
+        puts ""
+        puts "#{B_PURPLE}┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓#{RESET}"
+        puts "#{B_PURPLE}┃#{RESET} #{BI_WHITE}🔗 Links#{RESET}                              #{B_PURPLE}┃#{RESET}"
+        puts "#{B_PURPLE}┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛#{RESET}"
+        puts ""
+        puts "  #{B_WHITE}View:#{RESET}"
+        puts "  #{B_CYAN}➜#{RESET} #{U_BLUE}http://#{@options[:host]}:#{@options[:port]}/conversation/#{result['conversation_id']}#{RESET}"
+        puts ""
+        puts "  #{B_WHITE}Track:#{RESET}"
+        puts "  #{B_CYAN}➜#{RESET} #{CYAN}watch -n 2 \"curl -s http://#{@options[:host]}:#{@options[:port]}/api/conversations/#{result['conversation_id']}\"#{RESET}"
+        puts ""
+      end
+    else
+      error = JSON.parse(response.body) rescue { 'error' => response.body }
+      
+      if @options[:json]
+        puts JSON.pretty_generate(error)
+      else
+        puts "\n#{B_RED}╔════════════════════╗#{RESET}"
+        puts "#{B_RED}║  ✗  Error  ✗     ║#{RESET}"
+        puts "#{B_RED}╚════════════════════╝#{RESET}"
+        puts ""
+        puts "#{RED}#{error['error']}#{RESET}"
+        puts ""
+      end
+      
+      exit 1
+    end
+  rescue => e
+    if @options[:json]
+      puts JSON.pretty_generate({ error: e.message })
+    else
+      puts "\n#{B_RED}╔════════════════════╗#{RESET}"
+      puts "#{B_RED}║  ✗  Error  ✗     ║#{RESET}"
+      puts "#{B_RED}╚════════════════════╝#{RESET}"
+      puts ""
+      puts "#{RED}#{e.message}#{RESET}"
+      puts ""
+      puts "#{D_WHITE}Make sure the server is running:#{RESET}"
+      puts "  #{B_CYAN}➜#{RESET} #{CYAN}./start.sh#{RESET}"
+      puts "  #{D_WHITE}or#{RESET} #{CYAN}ruby app.rb#{RESET}"
+      puts ""
+    end
+    
+    exit 1
+  end
+end
+
+# Run CLI
+if __FILE__ == $0
+  ClaudeDialogueCLI.new.run(ARGV)
+end
