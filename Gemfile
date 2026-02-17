@@ -10,7 +10,7 @@ gem 'anthropic', '~> 0.1'
 gem 'httparty', '~> 0.21'
 gem 'json', '~> 2.7'
 gem 'sequel', '~> 5.75'
-gem 'rack', '~> 3.0'
+gem 'rack', '~> 3.2'
 
 group :development, :test do
   gem 'rspec', '~> 3.12'
